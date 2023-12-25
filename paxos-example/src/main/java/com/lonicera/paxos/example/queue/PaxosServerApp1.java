@@ -45,14 +45,15 @@ public class PaxosServerApp1 {
       server.start();
     } catch (Exception e) {
       log.error("proposer start error", e);
-      proposer.shutdown();
       server.shutdown();
+      proposer.shutdown();
     }
 
     Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
       @Override
       public void run() {
         try {
+          server.shutdown();
           proposer.shutdown();
         } catch (IOException e) {
           log.error(e);
