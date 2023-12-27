@@ -41,18 +41,19 @@ public class BallotService {
     BallotNumber reqNextBal = request.getNumber();
     int proposerId = proposer.getId();
 
-    if (proposer.getDraftPaper().getNextBal().compareTo(reqNextBal) != 0
-        || proposer.getDraftPaper().getTerm() > request.getDecree().getNewTerm()
-        || proposer.getLedger().lastDecreeIndex() > request.getDecree().getLastDecreeIndex()
-    ) {
-      ElectVoteResponse rejectVote = new ElectVoteResponse(false, proposerId);
-      return CompletableFuture.completedFuture(rejectVote);
+    synchronized (proposer) {
+      if (proposer.getDraftPaper().getNextBal().compareTo(reqNextBal) != 0
+          || proposer.getDraftPaper().getTerm() > request.getDecree().getNewTerm()
+          || proposer.getLedger().lastDecreeIndex() > request.getDecree().getLastDecreeIndex()
+      ) {
+        ElectVoteResponse rejectVote = new ElectVoteResponse(false, proposerId);
+        return CompletableFuture.completedFuture(rejectVote);
+      }
+
+      ElectVoteResponse acceptVote = new ElectVoteResponse(true, proposerId);
+      proposer.getDraftPaper().setPrevElectTerm(request.getDecree().getNewTerm());
+      return CompletableFuture.completedFuture(acceptVote);
     }
-
-    ElectVoteResponse acceptVote = new ElectVoteResponse(true, proposerId);
-    proposer.getDraftPaper().setPrevElectTerm(request.getDecree().getNewTerm());
-    return CompletableFuture.completedFuture(acceptVote);
-
   }
 
 
@@ -110,6 +111,7 @@ public class BallotService {
 
   public CompletableFuture<LastElectResponse> nextElect(NextElectRequest request) {
     BallotNumber reqNewBal = request.getNumber();
+
     BallotNumber nextBal = proposer.getDraftPaper().getNextBal();
 
     boolean accept = true;
@@ -119,7 +121,7 @@ public class BallotService {
       if (proposer.getDraftPaper().setNextBal(reqNewBal)) {
         log.info("Node : {} update nextBal({}) from Node : {}", proposer.getId(), reqNewBal,
             request.getProposerId());
-      }else{
+      } else {
         accept = false;
         log.info("Node : {} reject nextBal({}) from Node : {}", proposer.getId(), reqNewBal,
             request.getProposerId());
@@ -143,6 +145,7 @@ public class BallotService {
     );
 
     return CompletableFuture.completedFuture(lastVoteResponse);
+
   }
 
 
@@ -156,18 +159,20 @@ public class BallotService {
 
     BallotNumber reqNumber = request.getNumber();
 
-    if (proposer.getDraftPaper().getNextBal().compareTo(reqNumber) <= 0
-        && proposer.getDraftPaper().getTerm() == request.getTerm()) {
+    synchronized (proposer){
+      if (proposer.getDraftPaper().getNextBal().compareTo(reqNumber) <= 0
+          && proposer.getDraftPaper().getTerm() == request.getTerm()) {
 
-      BallotVoteResponse acceptVote = new BallotVoteResponse(true, proposerId);
+        BallotVoteResponse acceptVote = new BallotVoteResponse(true, proposerId);
 
-      GeneralDecreeVote decreeVote = new GeneralDecreeVote(reqNumber, request.getDecree());
-      proposer.getDraftPaper().setPrevGeneralVote(decreeVote);
+        GeneralDecreeVote decreeVote = new GeneralDecreeVote(reqNumber, request.getDecree());
+        proposer.getDraftPaper().setPrevGeneralVote(decreeVote);
 
-      log.info("Node : {} accept ballot {} decree {}", proposer.getId(), reqNumber,
-          request.getDecree().getIndex());
+        log.info("Node : {} accept ballot {} decree {}", proposer.getId(), reqNumber,
+            request.getDecree().getIndex());
 
-      return CompletableFuture.completedFuture(acceptVote);
+        return CompletableFuture.completedFuture(acceptVote);
+      }
 
     }
 
