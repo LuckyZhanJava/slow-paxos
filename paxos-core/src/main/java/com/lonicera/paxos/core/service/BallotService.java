@@ -159,19 +159,43 @@ public class BallotService {
 
     BallotNumber reqNumber = request.getNumber();
 
-    synchronized (proposer){
+    synchronized (proposer) {
       if (proposer.getDraftPaper().getNextBal().compareTo(reqNumber) <= 0
           && proposer.getDraftPaper().getTerm() == request.getTerm()) {
 
         BallotVoteResponse acceptVote = new BallotVoteResponse(true, proposerId);
 
-        GeneralDecreeVote decreeVote = new GeneralDecreeVote(reqNumber, request.getDecree());
-        proposer.getDraftPaper().setPrevGeneralVote(decreeVote);
+        GeneralDecree decree = request.getDecree();
+        long nextIndex = decree.getIndex();
 
-        log.info("Node : {} accept ballot {} decree {}", proposer.getId(), reqNumber,
-            request.getDecree().getIndex());
+        long lastIndex = proposer.getLedger().lastDecreeIndex();
 
-        return CompletableFuture.completedFuture(acceptVote);
+        if (nextIndex > (lastIndex + 1)) {
+
+          CompletableFuture<BallotVoteResponse> respFuture = new CompletableFuture<>();
+
+          CompletableFuture<DecreeReplicateResponse> decreeListResp = proposer.getMessenger()
+              .replicateDecrees(proposer.getLeaderId(), lastIndex);
+          decreeListResp.thenAccept((resp) -> {
+            List<GeneralDecree> recordList = resp.getDecreeList();
+            for (GeneralDecree record : recordList) {
+              proposer.record(record);
+            }
+            beginBallot(request).thenAccept((ballotResp) -> {
+              respFuture.complete(ballotResp);
+            });
+          });
+
+          return respFuture;
+        } else {
+          GeneralDecreeVote decreeVote = new GeneralDecreeVote(reqNumber, decree);
+          proposer.getDraftPaper().setPrevGeneralVote(decreeVote);
+
+          log.info("Node : {} accept ballot {} decree {}", proposer.getId(), reqNumber,
+              request.getDecree().getIndex());
+
+          return CompletableFuture.completedFuture(acceptVote);
+        }
       }
 
     }
