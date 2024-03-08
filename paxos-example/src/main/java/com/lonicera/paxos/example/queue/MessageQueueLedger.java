@@ -22,9 +22,9 @@ public class MessageQueueLedger implements Ledger {
   private List<GeneralDecree> decreeList;
   private GeneralDecree lastDecree;
 
-  public MessageQueueLedger(File ledgerFileWriter) throws IOException {
-    this.ledgerFileWriter = new FileWriter(ledgerFileWriter, true);
-    List<String> lineList = Files.readAllLines(ledgerFileWriter.toPath());
+  public MessageQueueLedger(File ledgerFile) throws IOException {
+    this.ledgerFileWriter = new FileWriter(ledgerFile, true);
+    List<String> lineList = Files.readAllLines(ledgerFile.toPath());
     decreeList = readDecreeList(lineList);
     lastDecree = decreeList.size() > 0 ? decreeList.get(decreeList.size() - 1) : null;
   }
