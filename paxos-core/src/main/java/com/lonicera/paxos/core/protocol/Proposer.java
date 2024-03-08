@@ -186,7 +186,7 @@ public class Proposer {
       });
     }
 
-    quorum.waitQuorate(5);
+    quorum.waitQuorate(5000);
 
     if (!quorum.isQuorate()) {
       log.info("Node : {} elect timeout will sleep", id);
