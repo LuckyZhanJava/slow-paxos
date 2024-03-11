@@ -10,8 +10,6 @@
   <version>1.0-SNAPSHOT</version>
   <modules>
     <module>paxos-core</module>
-    <module>paxos-common</module>
-    <module>paxos-client</module>
     <module>paxos-example</module>
   </modules>
 
